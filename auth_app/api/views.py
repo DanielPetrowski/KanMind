@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
-from .serializers import RegistrationSerializer
+from .serializers import RegistrationSerializer,LoginSerializer
+
 
 class RegistrationAPIView(APIView):
     # Offener Endpunkt laut Vorgabe ("No Permissions required")
@@ -32,5 +33,33 @@ class RegistrationAPIView(APIView):
                 "user_id": user.id
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginAPIView(APIView):
+    # Offener Endpunkt laut Vorgabe ("No Permissions required")
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            user = serializer.validated_data["user"]
+            
+            # Bestehendes Token aus der Datenbank holen oder erstellen
+            token, created = Token.objects.get_or_create(user=user)
+            
+            # Fullname zusammensetzen
+            fullname = f"{user.first_name} {user.last_name}".strip() or user.username
+            
+            # Exakte Response-Struktur laut deiner Vorgabe (Status 200)
+            response_data = {
+                "token": token.key,
+                "fullname": fullname,
+                "email": user.email,
+                "user_id": user.id
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
