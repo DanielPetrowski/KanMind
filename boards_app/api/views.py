@@ -3,7 +3,7 @@ from django.db.models import Q
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from boards_app.api.permissions import IsBoardOwnerOrMember
-from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer
+from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer
 from boards_app.models import Board
 
 
@@ -22,7 +22,7 @@ class BoardListView(generics.ListCreateAPIView):
         """Automatically set the logged-in user as the board owner."""
         serializer.save(owner=self.request.user)
 
-class BoardDetailView(generics.RetrieveAPIView):
+class BoardDetailView(generics.RetrieveUpdateAPIView):
     """API view to retrieve details of a specific board, including tasks."""
 
     queryset = Board.objects.all()
@@ -30,4 +30,10 @@ class BoardDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsBoardOwnerOrMember]
     lookup_field = "id"
     lookup_url_kwarg = "board_id"
+
+    def get_serializer_class(self):
+        """Return update serializer for PATCH/PUT and detail for GET."""
+        if self.request.method in ["PATCH", "PUT"]:
+            return BoardUpdateSerializer
+        return BoardDetailSerializer
 

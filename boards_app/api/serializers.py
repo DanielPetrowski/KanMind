@@ -98,3 +98,25 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         model = Board
         fields = ["id", "title", "owner_id", "members", "tasks"]
 
+class BoardUpdateSerializer(serializers.ModelSerializer):
+    """Serializer matching the exact PATCH specification from documentation."""
+
+    members = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=User.objects.all(), write_only=True
+    )
+    members_detail = UserSummarySerializer(
+        source="members", many=True, read_only=True
+    )
+
+    class Meta:
+        model = Board
+        fields = ["id", "title", "members", "members_detail"]
+
+    def update(self, instance, validated_data):
+        if "title" in validated_data:
+            instance.title = validated_data["title"]
+        if "members" in validated_data:
+            instance.members.set(validated_data["members"])
+        instance.save()
+        return instance
+
