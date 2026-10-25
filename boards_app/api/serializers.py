@@ -19,8 +19,8 @@ class BoardSerializer(serializers.ModelSerializer):
     """Board summary used for listing user boards."""
 
     owner_id = serializers.ReadOnlyField()
-    members = serializers.ListField(
-        child=serializers.EmailField(), write_only=True, required=False
+    members = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=User.objects.all(), write_only=True, required=False
     )
     member_count = serializers.SerializerMethodField()
     ticket_count = serializers.SerializerMethodField()
@@ -41,12 +41,9 @@ class BoardSerializer(serializers.ModelSerializer):
         ]
 
     def validate_members(self, value):
-        """Ensure all provided member emails exist in the database."""
-        existing_users = User.objects.filter(email__in=value)
-        if len(existing_users) != len(value):
-            raise serializers.ValidationError("Some user emails are invalid.")
-        
-        return existing_users
+        """Ensure provided user IDs are valid, otherwise raise a clear error."""
+       
+        return value
     
     def get_member_count(self, obj):
         """Return the number of board members."""
