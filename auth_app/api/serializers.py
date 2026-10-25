@@ -15,6 +15,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "fullname", "email", "password", "repeated_password"]
 
+    def validate_email(self, value):
+        """Check if the email address is already registered."""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+
     def validate(self, data):
         """Ensure that the password and its confirmation match."""
         password = data.get("password")
@@ -39,6 +46,8 @@ class LoginSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+    
 
     def validate(self, data):
         """Authenticate user based on provided email and password."""
