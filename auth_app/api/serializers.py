@@ -22,3 +22,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if password != repeated_password:
             raise serializers.ValidationError("passwords dont match")
         return data
+
+    def create(self, validated_data):
+        """Create a new user with a hashed password."""
+        email = validated_data.get("email")
+        
+        user = User.objects.create_user(
+            username=email,  
+            email=email,
+            password=validated_data.get("password")
+        )
+        return user
+
