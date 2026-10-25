@@ -7,12 +7,13 @@ from django.contrib.auth.models import User
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Validate registration data and check password match."""
 
+    fullname = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True)
     repeated_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password", "repeated_password"]
+        fields = ["id", "fullname", "email", "password", "repeated_password"]
 
     def validate(self, data):
         """Ensure that the password and its confirmation match."""
@@ -24,15 +25,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Create a new user with a hashed password."""
-        email = validated_data.get("email")
-        
-        user = User.objects.create_user(
-            username=email,  
-            email=email,
-            password=validated_data.get("password")
+        """Create user with hashed password and email as username."""
+        return User.objects.create_user(
+            username=validated_data.get("email"),
+            email=validated_data.get("email"),
+            password=validated_data.get("password"),
+            first_name=validated_data.get("fullname", "")
         )
-        return user
+
 
 class LoginSerializer(serializers.Serializer):
     """Validate login credentials using email and password."""
