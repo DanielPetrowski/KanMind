@@ -60,3 +60,12 @@ class LoginSerializer(serializers.Serializer):
 
         data["user"] = user
         return data
+
+class UserSummarySerializer(serializers.ModelSerializer):
+    """A minimal representation of a user for relations."""
+
+    fullname = serializers.CharField(source="first_name", read_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "fullname", "email"]
