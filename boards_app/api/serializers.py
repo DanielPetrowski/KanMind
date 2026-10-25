@@ -1,8 +1,8 @@
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-
-
+from boards_app.models import Board, Task
+from auth_app.api.serializers import UserSummarySerializer
 from boards_app.models import Board, Task
 
 
@@ -63,3 +63,41 @@ class BoardSerializer(serializers.ModelSerializer):
     def get_tasks_high_prio_count(self, obj):
         """Return the number of tasks with high priority."""
         return obj.tasks.filter(priority=Task.Priority.HIGH).count()
+
+class BoardTaskSerializer(serializers.ModelSerializer):
+    """Task representation inside the board detail view."""
+
+    assignee = UserSummarySerializer(read_only=True)
+    reviewer = UserSummarySerializer(read_only=True)
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee",
+            "reviewer",
+            "due_date",
+            "comments_count",
+        ]
+
+    def get_comments_count(self, obj):
+        """Return the number of comments of the task."""
+        return obj.comments.count()
+
+
+class BoardDetailSerializer(serializers.ModelSerializer):
+    """Detailed board representation with all members and tasks included."""
+
+    owner_id = serializers.ReadOnlyField()
+    members = UserSummarySerializer(many=True, read_only=True)
+    tasks = BoardTaskSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Board
+        fields = ["id", "title", "owner_id", "members", "tasks"]
+
