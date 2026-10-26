@@ -104,13 +104,24 @@ class BoardUpdateSerializer(serializers.ModelSerializer):
     members = serializers.PrimaryKeyRelatedField(
         many=True, queryset=User.objects.all(), write_only=True
     )
-    members_detail = UserSummarySerializer(
+    
+    owner_data = UserSummarySerializer(
+        source="owner", read_only=True
+    )
+    members_data = UserSummarySerializer(
         source="members", many=True, read_only=True
     )
-
     class Meta:
         model = Board
-        fields = ["id", "title", "members", "members_detail"]
+        fields = ["id", "title", "members", "owner_data", "members_data"]
+
+    def validate_members(self, value):
+        """Strictly validate that all provided member instance IDs exist."""
+        # Da DRF nicht existierende IDs bei M2M filtert, prüfen wir die IDs gegen die Rohdaten
+        input_ids = self.initial_data.get("members", [])
+        if len(value) != len(input_ids):
+            raise serializers.ValidationError("Einige Benutzer-IDs sind ungültig.")
+        return value
 
     def update(self, instance, validated_data):
         if "title" in validated_data:
