@@ -48,3 +48,13 @@ class AssignedTasksListView(generics.ListAPIView):
         """Filter tasks where the user is either the assignee or the reviewer."""
         user = self.request.user
         return Task.objects.filter(Q(assignee=user) | Q(reviewer=user)).distinct()
+
+class ReviewingTasksListView(generics.ListAPIView):
+    """API view to retrieve tasks where the active user is set as the reviewer."""
+
+    serializer_class = AssignedTaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter tasks where the user is the reviewer."""
+        return Task.objects.filter(reviewer=self.request.user).distinct()
