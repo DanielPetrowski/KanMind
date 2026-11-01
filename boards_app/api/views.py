@@ -1,10 +1,12 @@
 
 from django.db.models import Q
+from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly
-from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer
+from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer
 from boards_app.models import Board, Task
+from rest_framework.exceptions import PermissionDenied, NotFound
 
 
 class BoardListView(generics.ListCreateAPIView):
@@ -58,3 +60,27 @@ class ReviewingTasksListView(generics.ListAPIView):
     def get_queryset(self):
         """Filter tasks where the user is the reviewer."""
         return Task.objects.filter(reviewer=self.request.user).distinct()
+
+class TaskCreateView(generics.CreateAPIView):
+    """API view to handle task creation with strict board membership verification."""
+
+    serializer_class = TaskCreateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        """Verify board existence and user membership before saving."""
+        board_id = self.request.data.get("board")
+        
+        try:
+            board = Board.objects.get(id=board_id)
+        except Board.DoesNotExist:
+            raise NotFound("Das angegebene Board existiert nicht.")
+
+        # Prüfen, ob der User Besitzer oder Mitglied des Boards ist
+        is_owner = board.owner == self.request.user
+        is_member = board.members.filter(id=self.request.user.id).exists()
+        
+        if not (is_owner or is_member):
+            raise PermissionDenied("Du musst Mitglied des Boards sein, um eine Task zu erstellen.")
+            
+        serializer.save(created_by=self.request.user)

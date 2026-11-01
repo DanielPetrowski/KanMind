@@ -157,3 +157,37 @@ class AssignedTaskSerializer(serializers.ModelSerializer):
         """Return the number of comments of the task."""
         return obj.comments.count()
 
+class TaskCreateSerializer(serializers.ModelSerializer):
+    """Serializer used for creating tasks, resolving user IDs cleanly into database instances."""
+
+    
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), 
+        source="assignee",  
+        required=False, 
+        allow_null=True
+    )
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), 
+        source="reviewer", 
+        required=False, 
+        allow_null=True
+    )
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "board",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee_id",
+            "reviewer_id",
+            "due_date",
+        ]
+
+    def to_representation(self, instance):
+        """Use AssignedTaskSerializer for response representation to include full user data."""
+        return AssignedTaskSerializer(instance, context=self.context).data
