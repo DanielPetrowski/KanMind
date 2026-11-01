@@ -3,8 +3,8 @@ from django.db.models import Q
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly
-from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer
-from boards_app.models import Board
+from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer
+from boards_app.models import Board, Task
 
 
 class BoardListView(generics.ListCreateAPIView):
@@ -37,3 +37,14 @@ class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
             return BoardUpdateSerializer
         return BoardDetailSerializer
 
+
+class AssignedTasksListView(generics.ListAPIView):
+    """API view to retrieve tasks assigned to the active user as assignee or reviewer."""
+
+    serializer_class = AssignedTaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter tasks where the user is either the assignee or the reviewer."""
+        user = self.request.user
+        return Task.objects.filter(Q(assignee=user) | Q(reviewer=user)).distinct()

@@ -117,7 +117,7 @@ class BoardUpdateSerializer(serializers.ModelSerializer):
 
     def validate_members(self, value):
         """Strictly validate that all provided member instance IDs exist."""
-        # Da DRF nicht existierende IDs bei M2M filtert, prüfen wir die IDs gegen die Rohdaten
+       
         input_ids = self.initial_data.get("members", [])
         if len(value) != len(input_ids):
             raise serializers.ValidationError("Einige Benutzer-IDs sind ungültig.")
@@ -130,4 +130,30 @@ class BoardUpdateSerializer(serializers.ModelSerializer):
             instance.members.set(validated_data["members"])
         instance.save()
         return instance
+
+class AssignedTaskSerializer(serializers.ModelSerializer):
+    """Serializer matching the exact specification for tasks assigned to the user."""
+
+    assignee = UserSummarySerializer(read_only=True)
+    reviewer = UserSummarySerializer(read_only=True)
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "board",  
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee",
+            "reviewer",
+            "due_date",
+            "comments_count",
+        ]
+
+    def get_comments_count(self, obj):
+        """Return the number of comments of the task."""
+        return obj.comments.count()
 
