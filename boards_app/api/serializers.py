@@ -1,7 +1,7 @@
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from boards_app.models import Board, Task
+from boards_app.models import Board, Task, Comment  
 from auth_app.api.serializers import UserSummarySerializer
 from boards_app.api.permissions import is_board_member
 
@@ -263,3 +263,17 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Return full nested user representations on response."""
         return TaskDetailSerializer(instance, context=self.context).data
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Serializer for comments displaying author's full name as a string."""
+
+    author = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ["id", "created_at", "author", "content"]
+
+    def get_author(self, obj):
+        """Return author's full name, fallback to username if empty."""
+        full_name = f"{obj.author.first_name} {obj.author.last_name}".strip()
+        return full_name if full_name else obj.author.username

@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember,  IsTaskCreatorOrBoardOwner
-from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer, TaskDetailSerializer ,TaskUpdateSerializer
+from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer, TaskDetailSerializer ,TaskUpdateSerializer, CommentSerializer, is_board_member
 from boards_app.models import Board, Task
 from rest_framework.exceptions import PermissionDenied, NotFound, ValidationError
 
@@ -111,3 +111,25 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == "GET":
             return TaskDetailSerializer
         return TaskUpdateSerializer
+
+class TaskCommentsView(generics.ListAPIView):
+    """API view to list all comments belonging to a specific task."""
+
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Ensure task exists, user has access, and return ordered comments."""
+        task = self._get_task()
+        return task.comments.all().order_by("created_at")
+
+    def _get_task(self):
+        """Fetch task and verify user membership in its board."""
+        task_id = self.kwargs.get("task_id")
+        try:
+            task = Task.objects.select_related("board").get(id=task_id)
+        except (Task.DoesNotExist, ValueError):
+            raise NotFound("Task nicht gefunden.")
+        if not is_board_member(self.request.user, task.board):
+            raise PermissionDenied("Du musst Mitglied des Boards sein.")
+        return task
