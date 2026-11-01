@@ -27,3 +27,10 @@ class IsBoardOwnerOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         """Check if the requesting user is the absolute owner of the board."""
         return obj.owner == request.user
+
+class IsTaskBoardMember(permissions.BasePermission):
+    """Allow access only to members or owner of the task's board."""
+
+    def has_object_permission(self, request, view, obj):
+        """Check if user has access via the task's board."""
+        return is_board_member(request.user, obj.board)

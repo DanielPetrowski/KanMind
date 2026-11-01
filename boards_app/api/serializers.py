@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from boards_app.models import Board, Task
 from auth_app.api.serializers import UserSummarySerializer
-from boards_app.models import Board, Task
+from boards_app.api.permissions import is_board_member
 
 
 def members_field():
@@ -191,3 +191,75 @@ class TaskCreateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Use AssignedTaskSerializer for response representation to include full user data."""
         return AssignedTaskSerializer(instance, context=self.context).data
+
+
+class TaskDetailSerializer(serializers.ModelSerializer):
+    """Detailed representation of a task matching the doc response."""
+
+    assignee = UserSummarySerializer(read_only=True)
+    reviewer = UserSummarySerializer(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee",
+            "reviewer",
+            "due_date",
+        ]
+
+
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    """Handles partial task updates with strict board membership validation."""
+
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source="assignee",
+        required=False,
+        allow_null=True,
+    )
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source="reviewer",
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee_id",
+            "reviewer_id",
+            "due_date",
+        ]
+
+    def validate(self, attrs):
+        """Ensure board cannot be updated and users are board members."""
+        if "board" in self.initial_data:
+            raise serializers.ValidationError(
+                {"board": "Das Ändern des Boards ist nicht erlaubt."}
+            )
+        board = self.instance.board
+        self._validate_member(attrs.get("assignee"), board, "assignee_id")
+        self._validate_member(attrs.get("reviewer"), board, "reviewer_id")
+        return attrs
+
+    def _validate_member(self, user, board, field_name):
+        """Ensure user is a member of the given board."""
+        if user and not is_board_member(user, board):
+            raise serializers.ValidationError(
+                {field_name: "Benutzer ist kein Mitglied des Boards."}
+            )
+
+    def to_representation(self, instance):
+        """Return full nested user representations on response."""
+        return TaskDetailSerializer(instance, context=self.context).data

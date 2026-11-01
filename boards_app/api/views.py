@@ -3,8 +3,8 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly
-from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer
+from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember
+from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer, TaskDetailSerializer ,TaskUpdateSerializer
 from boards_app.models import Board, Task
 from rest_framework.exceptions import PermissionDenied, NotFound
 
@@ -76,7 +76,7 @@ class TaskCreateView(generics.CreateAPIView):
         except Board.DoesNotExist:
             raise NotFound("Das angegebene Board existiert nicht.")
 
-        # Prüfen, ob der User Besitzer oder Mitglied des Boards ist
+        
         is_owner = board.owner == self.request.user
         is_member = board.members.filter(id=self.request.user.id).exists()
         
@@ -84,3 +84,18 @@ class TaskCreateView(generics.CreateAPIView):
             raise PermissionDenied("Du musst Mitglied des Boards sein, um eine Task zu erstellen.")
             
         serializer.save(created_by=self.request.user)
+
+class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """API view to retrieve, update or delete a specific task."""
+
+    queryset = Task.objects.all()
+    serializer_class = TaskUpdateSerializer
+    permission_classes = [IsAuthenticated, IsTaskBoardMember]
+    lookup_field = "id"
+    lookup_url_kwarg = "task_id"
+
+    def get_serializer_class(self):
+        """Use read-only detail serializer for GET, update serializer for PATCH."""
+        if self.request.method == "GET":
+            return TaskDetailSerializer
+        return TaskUpdateSerializer
