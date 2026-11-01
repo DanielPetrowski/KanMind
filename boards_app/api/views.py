@@ -3,10 +3,10 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember
+from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember,  IsTaskCreatorOrBoardOwner
 from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer, TaskDetailSerializer ,TaskUpdateSerializer
 from boards_app.models import Board, Task
-from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.exceptions import PermissionDenied, NotFound, ValidationError
 
 
 class BoardListView(generics.ListCreateAPIView):
@@ -90,9 +90,21 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Task.objects.all()
     serializer_class = TaskUpdateSerializer
-    permission_classes = [IsAuthenticated, IsTaskBoardMember]
     lookup_field = "id"
     lookup_url_kwarg = "task_id"
+
+    def get_permissions(self):
+        """Use strict creator/owner check for DELETE, member check for others."""
+        if self.request.method == "DELETE":
+            return [IsAuthenticated(), IsTaskCreatorOrBoardOwner()]
+        return [IsAuthenticated(), IsTaskBoardMember()]
+
+    def get_object(self):
+        """Validate task_id format before querying to ensure 400 on bad data."""
+        task_id = self.kwargs.get("task_id")
+        if not str(task_id).isdigit():
+            raise ValidationError("Die übermittelte Task-ID ist fehlerhaft.")
+        return super().get_object()
 
     def get_serializer_class(self):
         """Use read-only detail serializer for GET, update serializer for PATCH."""

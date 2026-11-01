@@ -34,3 +34,12 @@ class IsTaskBoardMember(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         """Check if user has access via the task's board."""
         return is_board_member(request.user, obj.board)
+
+class IsTaskCreatorOrBoardOwner(permissions.BasePermission):
+    """Allow deletion only to the task creator or board owner."""
+
+    def has_object_permission(self, request, view, obj):
+        """Check if user created the task or owns the board."""
+        is_creator = obj.created_by == request.user
+        is_owner = obj.board.owner == request.user
+        return is_creator or is_owner
