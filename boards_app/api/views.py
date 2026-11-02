@@ -1,5 +1,5 @@
 
-from django.db.models import Q
+from django.db.models import Q,Count
 from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
@@ -18,7 +18,16 @@ class BoardListView(generics.ListCreateAPIView):
     def get_queryset(self):
         """Filter boards to show only those related to the active user."""
         user = self.request.user
-        return Board.objects.filter(Q(owner=user) | Q(members=user)).distinct()
+        return (
+            Board.objects.filter(Q(owner=user) | Q(members=user))
+            .annotate(
+                member_count=Count("members", distinct=True),
+                ticket_count=Count("tasks", distinct=True),
+                tasks_to_do_count=Count("tasks", filter=Q(tasks__status="to-do"), distinct=True),
+                tasks_high_prio_count=Count("tasks", filter=Q(tasks__priority="high"), distinct=True),
+            )
+            .distinct()
+        )
 
     def perform_create(self, serializer):
         """Automatically set the logged-in user as the board owner."""

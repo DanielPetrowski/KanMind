@@ -22,10 +22,10 @@ class BoardSerializer(serializers.ModelSerializer):
     members = serializers.PrimaryKeyRelatedField(
         many=True, queryset=User.objects.all(), write_only=True, required=False
     )
-    member_count = serializers.SerializerMethodField()
-    ticket_count = serializers.SerializerMethodField()
-    tasks_to_do_count = serializers.SerializerMethodField()
-    tasks_high_prio_count = serializers.SerializerMethodField()
+    member_count = serializers.IntegerField(read_only=True, default=0)
+    ticket_count = serializers.IntegerField(read_only=True, default=0)
+    tasks_to_do_count = serializers.IntegerField(read_only=True, default=0)
+    tasks_high_prio_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Board
