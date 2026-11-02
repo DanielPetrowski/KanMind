@@ -3,9 +3,9 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember,  IsTaskCreatorOrBoardOwner
+from boards_app.api.permissions import IsBoardOwnerOrMember , IsBoardOwnerOnly , IsTaskBoardMember,  IsTaskCreatorOrBoardOwner, IsCommentAuthor
 from boards_app.api.serializers import BoardSerializer , BoardDetailSerializer ,  BoardUpdateSerializer, AssignedTaskSerializer, TaskCreateSerializer, TaskDetailSerializer ,TaskUpdateSerializer, CommentSerializer, is_board_member
-from boards_app.models import Board, Task
+from boards_app.models import Board, Task, Comment
 from rest_framework.exceptions import PermissionDenied, NotFound, ValidationError
 
 
@@ -138,3 +138,36 @@ class TaskCommentsView(generics.ListCreateAPIView):
         if not is_board_member(self.request.user, task.board):
             raise PermissionDenied("Du musst Mitglied des Boards sein.")
         return task
+
+# 🟢 NEU: Endpunkt zum Löschen eines Kommentars (DELETE)
+class TaskCommentDetailView(generics.DestroyAPIView):
+    """API view to delete a specific comment from a task."""
+
+    permission_classes = [IsAuthenticated, IsCommentAuthor]
+
+    def get_object(self):
+        """Retrieve comment ensuring task and comment exist and match."""
+        task_id = self.kwargs.get("task_id")
+        comment_id = self.kwargs.get("comment_id")
+        self._validate_ids(task_id, comment_id)
+        self._validate_task_exists(task_id)
+        comment = self._get_comment(comment_id, task_id)
+        self.check_object_permissions(self.request, comment)
+        return comment
+
+    def _validate_ids(self, task_id, comment_id):
+        """Validate ID formats to reject non-numeric values with 400."""
+        if not str(task_id).isdigit() or not str(comment_id).isdigit():
+            raise ValidationError("Ungültige Anfragedaten.")
+
+    def _validate_task_exists(self, task_id):
+        """Ensure task exists or raise NotFound."""
+        if not Task.objects.filter(id=task_id).exists():
+            raise NotFound("Task nicht gefunden.")
+
+    def _get_comment(self, comment_id, task_id):
+        """Fetch comment belonging to task or raise NotFound."""
+        try:
+            return Comment.objects.get(id=comment_id, task_id=task_id)
+        except Comment.DoesNotExist:
+            raise NotFound("Kommentar nicht gefunden.")

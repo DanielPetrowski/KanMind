@@ -43,3 +43,10 @@ class IsTaskCreatorOrBoardOwner(permissions.BasePermission):
         is_creator = obj.created_by == request.user
         is_owner = obj.board.owner == request.user
         return is_creator or is_owner
+    
+class IsCommentAuthor(permissions.BasePermission):
+    """Allow deletion only strictly to the author of the comment."""
+
+    def has_object_permission(self, request, view, obj):
+        """Check if requesting user is the creator of the comment."""
+        return obj.author == request.user
