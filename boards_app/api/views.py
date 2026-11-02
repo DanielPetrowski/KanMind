@@ -112,7 +112,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             return TaskDetailSerializer
         return TaskUpdateSerializer
 
-class TaskCommentsView(generics.ListAPIView):
+class TaskCommentsView(generics.ListCreateAPIView):
     """API view to list all comments belonging to a specific task."""
 
     serializer_class = CommentSerializer
@@ -122,6 +122,11 @@ class TaskCommentsView(generics.ListAPIView):
         """Ensure task exists, user has access, and return ordered comments."""
         task = self._get_task()
         return task.comments.all().order_by("created_at")
+
+    def perform_create(self, serializer):
+        """Save comment with authenticated user and the associated task."""
+        task = self._get_task()
+        serializer.save(author=self.request.user, task=task)
 
     def _get_task(self):
         """Fetch task and verify user membership in its board."""

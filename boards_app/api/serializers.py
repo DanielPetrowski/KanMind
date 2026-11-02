@@ -273,6 +273,14 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ["id", "created_at", "author", "content"]
 
+        read_only_fields = ["id", "created_at", "author"]
+
+    def validate_content(self, value):
+        """Ensure comment content is not empty or pure whitespace."""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Inhalt darf nicht leer sein.")
+        return value
+
     def get_author(self, obj):
         """Return author's full name, fallback to username if empty."""
         full_name = f"{obj.author.first_name} {obj.author.last_name}".strip()
